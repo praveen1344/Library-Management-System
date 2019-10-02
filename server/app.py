@@ -11,7 +11,6 @@ db = SA(app)
 from models import create_models
 create_models(db)
 
-
 # @app.route('/')
 # def index():
 #     def db_query():
