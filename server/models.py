@@ -4,7 +4,10 @@ from flask import g
 import sqlalchemy as sa
 from sqlalchemy import UniqueConstraint
 
+
 import config
+
+
 
 class Subjects(db.Model):
     __tablename__ = 'Subjects'
@@ -16,3 +19,4 @@ class Subjects(db.Model):
 def create_models(db):
 
     db.create_all()
+    
