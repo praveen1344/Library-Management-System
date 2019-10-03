@@ -10,15 +10,15 @@ from flask_sqlalchemy import SQLAlchemy
 
 def dbConn():
     # ssh variables
-    host = '34.209.47.103'
+    host = '18.222.199.110'
     localhost = '127.0.0.1'
-    ssh_username = 'root'
+    ssh_username = 'ubuntu'
 #    ssh_password = '123456'
-    ss_public_key = 'Clusterkey.pem'
+    ss_public_key = 'galera-cluster.pem'
     # database variables
     user='root'
     password='123456'
-    database='mysql'
+    database='LibraryInventory'
     app = Flask(__name__)
     server =  SSHTunnelForwarder(
          (host, 22),
@@ -28,7 +28,7 @@ def dbConn():
          remote_bind_address=(localhost, 3306))
     
     server.start()
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:123456@127.0.0.1:{}/mysql'.format(server.local_bind_port)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:123456@127.0.0.1:{}/LibraryInventory'.format(server.local_bind_port)
     #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://127.0.0.1'
     db = SQLAlchemy(app)
     return db

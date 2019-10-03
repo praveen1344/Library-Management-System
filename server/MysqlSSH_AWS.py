@@ -6,16 +6,16 @@ Created on Thu Sep 26 14:35:05 2019
 """
 
 # ssh variables
-host = '34.209.47.103'
+host = '18.222.199.110'
 localhost = '127.0.0.1'
-ssh_username = 'root'
+ssh_username = 'ubuntu'
 ssh_password = '123456'
 #ss_private_key = '/path/to/key.pem'
-ss_private_key = 'Clusterkey.pem'
+ss_private_key = 'galera-cluster.pem'
 # database variables
 user='root'
 password='123456'
-database='mysql'
+database='test_db'
 
 from sshtunnel import SSHTunnelForwarder
 import MySQLdb as db
@@ -38,4 +38,4 @@ def query(q):
 
         return pd.read_sql_query(q, conn)
     
-df = query('select * from user limit 5')
+df = query('select * from test limit 5')
