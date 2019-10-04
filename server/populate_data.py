@@ -8,9 +8,9 @@ import config
 from models import Book,Subject,Checkout,Inventory
 
 def populate_tables():
-    # load_data_from_csv(obj['Book'],'Book')
-    # load_data_from_csv(obj['Subject'],'Subject')
-    #load_data_from_csv(obj['Checkout'],'Checkout')
+    load_data_from_csv(obj['Book'],'Book')
+    load_data_from_csv(obj['Subject'],'Subject')
+    load_data_from_csv(obj['Checkout'],'Checkout')
     load_data_from_csv(obj['Inventory'],'Inventory')
 
 obj = {
