@@ -80,8 +80,14 @@ def getCheckoutByItemType():
     
     author = "%" + args['authorname'].strip() + "%"
     
-    query = db.session.execute("select AuthorName,Checkout.bibnum,itemtype,count(*)  from Book,Checkout where Book.bibnum = Checkout.bibnum and AuthorName like :author group by AuthorName,Checkout.bibnum,itemtype;",{'author':author})
+    query = db.session.execute("select AuthorName,Checkout.bibnum,itemtype,count(*) as count  from Book,Checkout where Book.bibnum = Checkout.bibnum and AuthorName like :author group by AuthorName,Checkout.bibnum,itemtype LIMIT 1;",{'author':author})
     result = result_to_dict(query.fetchall())
     
     return {'response': result}
 
+@app.route('/lms/api/retireBooks', methods=['GET'])
+def findBooksToRetire():
+    query = db.session.execute("SELECT distinct bibnum, itemcount  FROM Inventory where bibnum not in (select bibnum from Checkout) and Inventory.entrydate = '2018-01-02' and Inventory.ItemCount > 50 order by Inventory.itemcount desc")
+    result = result_to_dict(query.fetchall())
+    
+    return {'response': result}
