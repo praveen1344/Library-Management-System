@@ -55,7 +55,7 @@ import csv
 def load_data_from_csv(dictionary,tablename):
     listObj = []
 
-    with open(dictionary['filePath']) as csv_file:
+    with open(dictionary['filePath'],encoding='utf8') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         line_count = 0
         i = 0
