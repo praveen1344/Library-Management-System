@@ -87,14 +87,14 @@ def getCheckoutByItemType():
 
 @app.route('/lms/api/retireBooks', methods=['GET'])
 def findBooksToRetire():
-    query = db.session.execute("SELECT distinct i.bibnum,b.title, i.itemcount FROM Inventory i left outer join checkout c on i.bibnum = c.bibnum inner join book b on i.bibnum=b.bibnum where  i.entrydate = '2018-01-02' and i.ItemCount > 50 order by i.itemcount desc")
+    query = db.session.execute("SELECT distinct i.bibnum,b.title, i.itemcount FROM Inventory i left outer join Checkout c on i.bibnum = c.bibnum inner join Book b on i.bibnum=b.bibnum where  i.entrydate = '2018-01-02' and i.ItemCount > 50 order by i.itemcount desc")
     result = result_to_dict(query.fetchall())
     
     return {'response': result}
 
 @app.route('/lms/api/purchaseBooks', methods=['GET'])
 def findBooksToPurchase():
-    query = db.session.execute("select c.bibnum,b.title,count(c.bibnum) as count FROM checkout c inner join book b on c.bibnum=b.bibnum where checkoutyear=2019 and checkoutmonth=9 and checkoutday=30 group by c.bibnum,b.title order by count desc LIMIT 10")
+    query = db.session.execute("select c.bibnum,b.title,count(c.bibnum) as count FROM Checkout c inner join Book b on c.bibnum=b.bibnum where checkoutyear=2019 and checkoutmonth=9 and checkoutday=30 group by c.bibnum,b.title order by count desc LIMIT 10")
     result = result_to_dict(query.fetchall())
     
     return {'response': result}
