@@ -3,9 +3,7 @@ import datetime
 from flask import g
 import sqlalchemy as sa
 from sqlalchemy import UniqueConstraint
-
 import config
-
 from sqlalchemy.inspection import inspect
 
 subject_mapping = db.Table('SubjectBook', 
@@ -59,8 +57,6 @@ from populate_data import populate_tables
 
 def create_models(db):
     db.create_all()
-    # print('bbb', db.session.query(Book).first())
-    # print('aaa ',db.session.execute('SELECT True FROM Book LIMIT 1'))
     
     if db.session.query(Book).first() is None:
         populate_tables()

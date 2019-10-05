@@ -54,7 +54,6 @@ class Checkout(db.Model):
 db.create_all()
 import pandas as pd
 df = pd.read_csv("E:\Commn\MS\ISTM622\Clean_CheckOutData.csv")
-#checkout = df.values.tolist()
 for index, item in df.iterrows():
     db.session.merge(Checkout(item['ID'],item['BibNumber'],item['CheckOutMonth'],item['ItemType'],item['CheckoutYear'],item['CheckOutTime']))
     if index == 100:break

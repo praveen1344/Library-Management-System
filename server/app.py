@@ -24,7 +24,7 @@ parser = reqparse.RequestParser()
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
 
-#Get the first 10 books in the Boosk Table //Check
+#Get the first 10 books in the Books Table
 @app.route('/lms/api/books', methods=['GET'])
 def book():
     def getBooks(parameter):
@@ -41,6 +41,7 @@ def book():
     response = jsonify(results)
     return response
 
+#Get books based on title. Get suggested books based on the subject of input book title
 @app.route('/lms/api/book', methods=['GET'])
 def getBookByTitle():
     parser.add_argument('title', type=str)
@@ -52,7 +53,6 @@ def getBookByTitle():
     book = dict(book.first())
     bibnum = book['bibnum']
 
-    # print(bibnum)
     availableCountQuery = db.session.execute("Select ItemCount from Inventory where bibnum=:bibnum  and entrydate = '2019-01-09'",{'bibnum':bibnum})
     checkoutCountQuery = db.session.execute("Select count(*) from Checkout where bibnum=:bibnum and checkoutDay >=01 and checkoutmonth=9 and checkoutyear=2019;",{'bibnum':bibnum})
     
@@ -61,7 +61,7 @@ def getBookByTitle():
     
     availableCount = availableCountQuery.first()[0]
     checkoutCount = checkoutCountQuery.first()[0]
-    # print('sssssss',availableCount,checkoutCount)
+
 
     if (availableCount - checkoutCount) > 0:
         book['count'] = availableCount - checkoutCount
@@ -73,6 +73,8 @@ def getBookByTitle():
     
     return {'book':book,'suggestions': data}
 
+#For a given author, the most popular format for their publications will be displayed 
+#which could contribute as a suggestion for their future publications
 @app.route('/lms/api/compareCheckoutsByPublishedType', methods=['GET'])
 def getCheckoutByItemType():
     parser.add_argument('authorname', type=str)
@@ -85,6 +87,7 @@ def getCheckoutByItemType():
     
     return {'response': result}
 
+#Top books to be retired from library which have no check out activity
 @app.route('/lms/api/retireBooks', methods=['GET'])
 def findBooksToRetire():
     query = db.session.execute("SELECT distinct i.bibnum,b.title, i.itemcount FROM Inventory i left outer join Checkout c on i.bibnum = c.bibnum inner join Book b on i.bibnum=b.bibnum where  i.entrydate = '2018-01-02' and i.ItemCount > 50 order by i.itemcount desc")
@@ -92,6 +95,7 @@ def findBooksToRetire():
     
     return {'response': result}
 
+#Based on most checked out books, list of books to be purchase
 @app.route('/lms/api/purchaseBooks', methods=['GET'])
 def findBooksToPurchase():
     query = db.session.execute("select c.bibnum,b.title,count(c.bibnum) as count FROM Checkout c inner join Book b on c.bibnum=b.bibnum where checkoutyear=2019 and checkoutmonth=9 and checkoutday=30 group by c.bibnum,b.title order by count desc LIMIT 10")
