@@ -70,7 +70,8 @@ def getBookByTitle():
 
 
     data = result_to_dict(similairBooks)
-    
+    if data:
+        del data[0]       #delete the first row from list i.e. searched book title
     return {'book':book,'suggestions': data}
 
 #For a given author, the most popular format for their publications will be displayed 
