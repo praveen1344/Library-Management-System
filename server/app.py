@@ -83,7 +83,7 @@ def getCheckoutByItemType():
     
     author = "%" + args['authorname'].strip() + "%"
     
-    query = db.session.execute("select AuthorName,Checkout.bibnum,itemtype,count(*) as count  from Book,Checkout where Book.bibnum = Checkout.bibnum and AuthorName like :author group by AuthorName,Checkout.bibnum,itemtype order by count LIMIT 1;",{'author':author})
+    query = db.session.execute("select AuthorName,Checkout.bibnum,itemtype,count(*) as count  from Book,Checkout where Book.bibnum = Checkout.bibnum and AuthorName like :author group by AuthorName,Checkout.bibnum,itemtype order by count desc LIMIT 1;",{'author':author})
     result = result_to_dict(query.fetchall())
     
     return {'response': result}
