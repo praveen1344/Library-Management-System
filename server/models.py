@@ -24,6 +24,12 @@ class Book(db.Model):
     @staticmethod
     def get_books_10():
         return Book.query.limit(10).all()
+    
+    def make_dict(self):
+        inventoryEntry = list(entry.make_dict() for entry in self.inventoryentry)
+        checkoutEntry = list(entry.make_dict() for entry in self.checkoutentry)
+        
+        return {'bibnum': self.bibnum, 'title': self.title, 'author': self.authorname, 'publication': self.publicationname, 'inventory': inventoryEntry,'checkout': checkoutEntry}
 
 class Subject(db.Model):
     __tablename__ = 'Subject'
@@ -43,6 +49,10 @@ class Checkout(db.Model):
     checkoutday  = db.Column(db.Integer)
     checkouttime  = db.Column(db.Text)
 
+    def make_dict(self):
+        # return {'checkoutid': self.checkoutid, 'bibnum': self.bibnum, 'itemtype': self.itemtype, 'checkoutmonth': self.checkoutmonth, 'checkoutyear': self.checkoutyear, 'checkoutday': self.checkoutday, 'checkouttime': self.checkouttime }
+        return {'id': self.checkoutid, 'itemtype': self.itemtype, 'checkoutmonth': self.checkoutmonth, 'checkoutyear': self.checkoutyear, 'checkoutday': self.checkoutday, 'checkouttime': self.checkouttime }
+
 class Inventory(db.Model):
     __tablename__ = 'Inventory'
 
@@ -50,6 +60,10 @@ class Inventory(db.Model):
     bibnum      = db.Column(db.Integer, db.ForeignKey('Book.bibnum'))
     entrydate   = db.Column(db.DateTime)
     itemcount   = db.Column(db.Integer)
+
+    def make_dict(self):
+        # return {'entry': self.inventoryid, 'bibnum': self.bibnum, 'entrydate': str(self.entrydate), 'itemcount': self.itemcount}
+        return {'id': self.inventoryid, 'entrydate': str(self.entrydate), 'itemcount': self.itemcount}
 
 
 from populate_data import populate_tables

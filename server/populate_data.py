@@ -59,7 +59,7 @@ def load_data_from_csv(dictionary,tablename):
         csv_reader = csv.reader(csv_file, delimiter=',')
         line_count = 0
         i = 0
-        print(dictionary)
+        # print(dictionary)
         for row in csv_reader:
             if line_count != 0:
                 obj = {}
@@ -89,7 +89,7 @@ def load_books(books):
         db.session.add(newBook)
         db.session.commit()
         i += 1
-        if i > 20000:
+        if i > 100000:
             break
 
 def load_subjects(subjects):
@@ -106,9 +106,9 @@ def load_subjects(subjects):
         if book is not None:
             newSubject.books.append(book)
         db.session.commit()
-        i += 1
-        if i > 10000:
-            break
+        # i += 1
+        # if i > 10000:
+        #     break
 
 def load_checkout(checkoutlist):
     i = 0
@@ -122,8 +122,8 @@ def load_checkout(checkoutlist):
             book.checkoutentry.append(newentry)
         db.session.commit()
         i += 1
-        if i > 20000:
-            break
+        # if i > 20000:
+        #     break
 
 def load_inventory(inventory):
     i = 0
@@ -137,5 +137,5 @@ def load_inventory(inventory):
             book.inventoryentry.append(newentry)
         db.session.commit()
         i += 1
-        if i > 20000:
-            break
+        # if i > 20000:
+        #     break

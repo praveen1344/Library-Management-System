@@ -1,45 +1,40 @@
-from flask import Flask, render_template,make_response,jsonify,request
-from flask_sqlalchemy import SQLAlchemy as SA
-from flask_restful import Resource,Api,reqparse
-import config 
-import mysql.connector
-from sqlalchemy import func
+from flask import Flask, jsonify
+from flask_pymongo import PyMongo
 import json
-from sqlalchemy_serializer import SerializerMixin
+from pymongo import MongoClient
+from flask_restful import Resource,Api,reqparse
+import re
 from flask_cors import CORS
+import operator
+import pandas as pd
+from ItemTypeHashmap import mapping as ItemTypeMapping
 
-app = Flask('Library Management System')
+app = Flask('Seattle Library Management')
 cors = CORS(app)
-app.config["SQLALCHEMY_DATABASE_URI"] = config.DEV
-db = SA(app)
-from utils import result_to_dict
+app.config['MONGO_DB'] = 'seattle-library'
+app.config['MONGO_URI'] = 'mongodb://localhost:27017/' + app.config['MONGO_DB']
+print(app.config['MONGO_URI'])
+mongo = PyMongo(app)
 
-from models import create_models
+client = MongoClient()
+db = client['seattle-library']
+collection = db.books
 
-create_models(db)
-from models import Book,Subject,Checkout
 parser = reqparse.RequestParser()
+#Load data into the MongoDB Datastore
+@app.route('/lms/api/dataload', methods=['GET'])
+def data_load():
+    # with open('../../ADB Proj Final Data/JSON/FinalAggregate_1000.json') as json_file:
+    with open('../../ADB Proj Final Data/JSON/FinalAggregrate.json') as json_file:
+        objects = json.load(json_file)
+        i = 0
+        for row in objects:
+            row['inventory'] = row['inventory'][0]
+            row['inventory']['entrydate'] = "2019-01-09 00:00:00"
 
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'error': 'Not found'}), 404)
-
-#Get the first 10 books in the Books Table
-@app.route('/lms/api/books', methods=['GET'])
-def book():
-    def getBooks(parameter):
-        books = Book.get_books_10()
-        return books
-    response = getBooks('bookname')
-    
-    results = []
-    for bucketlist in response:
-        obj = {
-            'name': bucketlist.title
-        }
-        results.append(obj)
-    response = jsonify(results)
-    return response
+        print(len(objects))
+    collection.insert_many(objects)
+    return {'response':'200'}
 
 #Get books based on title. Get suggested books based on the subject of input book title
 @app.route('/lms/api/book', methods=['GET'])
@@ -47,32 +42,61 @@ def getBookByTitle():
     parser.add_argument('title', type=str)
     args = parser.parse_args()
     
-    title = "%" + args['title'].strip() + "%"
+    title = '.*' + args['title'].strip() + '.*'
     
-    book = db.session.execute("SELECT * FROM Book WHERE title LIKE :title",{'title':title})
-    book = dict(book.first())
-    bibnum = book['bibnum']
+    response = collection.find({'title': re.compile(title + '$', re.IGNORECASE), 'inventory.itemcount': { '$gte': 1 }}).limit(1)
+    output = []
+    similairBooks = []
+    subjectlist = []
+    bibnum = None
+    for s in response:
+        bibnum = s['bibnum']
+        checkout = s['checkout']
+        checkoutcount = inventorycount = 0
+        inventorycount = s['inventory']['itemcount']
+        for elem in checkout:
+            if elem['checkoutmonth'] == 9 and elem['checkoutyear'] == 2019:
+                checkoutcount += 1
+        
+        availablecount = inventorycount - checkoutcount
 
-    availableCountQuery = db.session.execute("Select ItemCount from Inventory where bibnum=:bibnum  and entrydate = '2019-01-09'",{'bibnum':bibnum})
-    checkoutCountQuery = db.session.execute("Select count(*) from Checkout where bibnum=:bibnum and checkoutDay >=01 and checkoutmonth=9 and checkoutyear=2019;",{'bibnum':bibnum})
+        if availablecount < 0:
+                availablecount = 0
+
+        output.append({'bibnum' : s['bibnum'], 'title' : s['title'], 'authorname': s['author'],'publicationname': s['publication'], 'count': availablecount})
+        if 'subjectslist' in s:
+            subjectlist = s['subjectslist']
+
+
+    if len(subjectlist) > 0:
+        similairBooksQuery = collection.find({'subjectslist': { '$in' : subjectlist}}).limit(100)
+        for s in similairBooksQuery:
+            if s['bibnum'] != bibnum:
+                similairBooks.append({'bibnum' : s['bibnum'], 'title' : s['title'], 'authorname': s['author'], 'publicationname': s['publication'], 'count': s['inventory']})
+            
+    return jsonify({'book': output, 'suggestions': similairBooks})
+
+# Trial API just to get the list of Authors who have more than one book published and present in the Seattle Library
+@app.route('/lms/api/authorcheck', methods=['GET'])
+def checkmultipleauthor():
+    parser.add_argument('title', type=str)
+    args = parser.parse_args()
     
-    similairBooks = db.session.execute("select * from SubjectBook join Book on SubjectBook.bibnum = Book.BibNum  where subjectid in (select Subject.subjectid from Subject join SubjectBook on Subject.subjectid = SubjectBook.subjectid where SubjectBook.bibnum = :bibnum)",{'bibnum':bibnum})
-    similairBooks = similairBooks.fetchall()
+    response = collection.find()
+    output = {}
+    for s in response:
+        if s['author'] in output:
+            output[s['author']]['count'] += 1
+        else:
+            objectA = {
+                'count' : 1
+            }
+            output[s['author']] = objectA
     
-    availableCount = availableCountQuery.first()[0]
-    checkoutCount = checkoutCountQuery.first()[0]
-
-
-    if (availableCount - checkoutCount) > 0:
-        book['count'] = availableCount - checkoutCount
-    else:
-        book['count'] = 0
-
-
-    data = result_to_dict(similairBooks)
-    if data:
-        del data[0]       #delete the first row from list i.e. searched book title
-    return {'book':book,'suggestions': data}
+    for elem in output:
+        if output[elem]['count'] > 10:
+            print('Found', output[elem])
+    return {'response':'200'}
 
 #For a given author, the most popular format for their publications will be displayed 
 #which could contribute as a suggestion for their future publications
@@ -80,26 +104,64 @@ def getBookByTitle():
 def getCheckoutByItemType():
     parser.add_argument('authorname', type=str)
     args = parser.parse_args()
+    authorNameInput = args['authorname']
     
-    author = "%" + args['authorname'].strip() + "%"
+    author = args['authorname'].strip()
     
-    query = db.session.execute("select AuthorName,Checkout.bibnum,itemtype,count(*) as count  from Book,Checkout where Book.bibnum = Checkout.bibnum and AuthorName like :author group by AuthorName,Checkout.bibnum,itemtype order by count desc LIMIT 1;",{'author':author})
-    result = result_to_dict(query.fetchall())
-    
-    return {'response': result}
+    response = collection.find({'author': author})
 
-#Top books to be retired from library which have no check out activity
-@app.route('/lms/api/retireBooks', methods=['GET'])
-def findBooksToRetire():
-    query = db.session.execute("SELECT distinct i.bibnum,b.title, i.itemcount FROM Inventory i left outer join Checkout c on i.bibnum = c.bibnum inner join Book b on i.bibnum=b.bibnum where  i.entrydate = '2018-01-02' and i.ItemCount > 50 order by i.itemcount desc")
-    result = result_to_dict(query.fetchall())
+    itemTypeHash = {}
+    output = []
+    for s in response:
+        if len(s['checkout']) > 0:
+            for elem in s['checkout']:
+                if elem['itemtype'] in itemTypeHash:
+                    itemTypeHash[elem['itemtype']] += 1
+                else:
+                    itemTypeHash[elem['itemtype']] = 1
     
-    return {'response': result}
+    for elem in list(itemTypeHash.keys()):
+        output.append({
+            'AuthorName': authorNameInput,
+            'itemtype': elem,
+            'count': itemTypeHash[elem]
+        })
+        
+    return {'response': output}
 
-#Based on most checked out books, list of books to be purchase
+#Find Books that need to be purchased for the library
 @app.route('/lms/api/purchaseBooks', methods=['GET'])
-def findBooksToPurchase():
-    query = db.session.execute("select c.bibnum,b.title,count(c.bibnum) as count FROM Checkout c inner join Book b on c.bibnum=b.bibnum where checkoutyear=2019 and checkoutmonth=9 and checkoutday=30 group by c.bibnum,b.title order by count desc LIMIT 10")
-    result = result_to_dict(query.fetchall())
+def getBooksToBePurchased():
+    purchase = []
+    lt_count = int()
+    output = []
+    result = collection.find({'checkout.checkoutyear':2019,'checkout.itemtype': {'$in': ItemTypeMapping}})
+    i = 0
+    for book in result:
+        item = {}
+        lt_count = 0
+        i+=1
+        item['title'] = book['title']
+        item['bibnum'] = book['bibnum']
+        for checkout in book['checkout']:
+            lt_count += 1
+        item['Count'] = lt_count
+        
+        purchase.append(item)
+    purchase.sort(key=lambda x: x['Count'], reverse=True)
+    output = purchase[0:30]
     
-    return {'response': result}
+    return {'response': output}
+
+#Find Books that can be retired from the library
+@app.route('/lms/api/retireBooks', methods=['GET'])
+def retireBooks():
+    output = []
+    
+    result = collection.find({'inventory.itemcount':{'$gte': 50},'checkout': {'$size': 0}}).sort('inventory.itemcount',-1).limit(30)
+    
+    i = 0
+    for book in result:
+        output.append({'bibnum': book['bibnum'], 'title': book['title'], 'itemcount': book['inventory']['itemcount']})
+    # print(output)
+    return {'response': output}
